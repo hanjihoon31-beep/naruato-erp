@@ -19,16 +19,23 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
 
   // ✅ 초기 상태를 localStorage에서 직접 읽어옴
+  const [token, setToken] = useState(() => {
+    const savedToken = localStorage.getItem("erp_token");
+    console.log("🔐 초기 토큰 로드:", savedToken ? "있음" : "없음");
+    return savedToken || "";
+  });
+
   const [user, setUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem("erp_user");
-      return savedUser ? JSON.parse(savedUser) : null;
+      const parsed = savedUser ? JSON.parse(savedUser) : null;
+      console.log("👤 초기 유저 로드:", parsed ? parsed.name : "없음");
+      return parsed;
     } catch {
       return null;
     }
   });
 
-  const [token, setToken] = useState(() => localStorage.getItem("erp_token") || "");
   const [loading, setLoading] = useState(true);
 
   const axiosRef = useRef(
@@ -48,11 +55,16 @@ export function AuthProvider({ children }) {
     navigate("/login", { replace: true });
   }, [navigate]);
 
+  // ✅ axios interceptor: 요청마다 최신 token 사용
   useEffect(() => {
     const requestInterceptor = authAxios.interceptors.request.use((config) => {
-      if (token) {
+      const currentToken = localStorage.getItem("erp_token"); // ✅ 항상 최신 토큰 사용
+      if (currentToken) {
         config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${token}`;
+        config.headers.Authorization = `Bearer ${currentToken}`;
+        console.log("🔑 토큰 헤더 추가:", currentToken.substring(0, 20) + "..."); // 디버깅
+      } else {
+        console.warn("⚠️ 토큰이 없습니다!");
       }
       return config;
     });
@@ -72,7 +84,7 @@ export function AuthProvider({ children }) {
       authAxios.interceptors.request.eject(requestInterceptor);
       authAxios.interceptors.response.eject(responseInterceptor);
     };
-  }, [authAxios, token, logout]);
+  }, [authAxios, logout]); // ✅ token 의존성 제거
 
   /* ✅ 새로고침 유지 */
   const resolveAdminPermissions = useCallback((payload) => {
@@ -94,25 +106,11 @@ export function AuthProvider({ children }) {
     };
   }, [resolveAdminPermissions]);
 
+  // ✅ 초기 로딩 완료 처리
   useEffect(() => {
-    const savedToken = localStorage.getItem("erp_token");
-    const savedUser = localStorage.getItem("erp_user");
-
-    if (savedToken && savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setToken(savedToken);
-        setUser(enrichUser(parsedUser));
-        setLoading(false); // ✅ 로딩 완료
-        return;
-      } catch (err) {
-        console.warn("저장된 사용자 정보를 불러오지 못했습니다. 재로그인 필요:", err);
-        localStorage.removeItem("erp_token");
-        localStorage.removeItem("erp_user");
-      }
-    }
     setLoading(false);
-  }, [enrichUser]);
+    console.log("✅ AuthContext 초기화 완료 - 토큰:", token ? "있음" : "없음", "/ 유저:", user ? user.name : "없음");
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hydrateProfile = useCallback(async () => {
     if (!token) return null;
