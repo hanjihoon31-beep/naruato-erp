@@ -59,12 +59,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const requestInterceptor = authAxios.interceptors.request.use((config) => {
       const currentToken = localStorage.getItem("erp_token"); // ✅ 항상 최신 토큰 사용
+      console.log("📡 API 요청:", config.method?.toUpperCase(), config.url);
       if (currentToken) {
         config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${currentToken}`;
-        console.log("🔑 토큰 헤더 추가:", currentToken.substring(0, 20) + "..."); // 디버깅
+        console.log("🔑 토큰 헤더 추가:", currentToken.substring(0, 20) + "...");
       } else {
-        console.warn("⚠️ 토큰이 없습니다!");
+        console.warn("⚠️ 토큰이 없습니다! localStorage:", Object.keys(localStorage));
+        console.warn("⚠️ 현재 URL:", window.location.href);
       }
       return config;
     });
@@ -153,12 +155,33 @@ export function AuthProvider({ children }) {
         password,
       });
 
+      console.log("📥 로그인 응답 전체:", JSON.stringify(data, null, 2));
+      console.log("🔑 받은 토큰:", data.token ? data.token.substring(0, 30) + "..." : "❌ 토큰 없음!");
+      console.log("👤 받은 유저:", data.user ? data.user.name : "❌ 유저 없음!");
+
       if (data.success) {
+        // ✅ 토큰 검증
+        if (!data.token) {
+          console.error("❌ 서버에서 토큰을 반환하지 않았습니다!");
+          return { success: false, message: "토큰을 받지 못했습니다. 관리자에게 문의하세요." };
+        }
+
+        // ✅ 토큰 저장
         localStorage.setItem("erp_token", data.token);
+        console.log("💾 localStorage에 토큰 저장 완료");
+
+        // ✅ 즉시 확인
+        const savedToken = localStorage.getItem("erp_token");
+        console.log("🔍 저장 직후 확인:", savedToken ? savedToken.substring(0, 30) + "..." : "❌ 저장 실패!");
+
         const enriched = enrichUser(data.user);
         localStorage.setItem("erp_user", JSON.stringify(enriched));
+        console.log("💾 localStorage에 유저 저장 완료");
+
         setToken(data.token);
         setUser(enriched);
+
+        console.log("✅ 로그인 성공 - State 업데이트 완료");
         return { success: true };
       }
       return { success: false, message: data?.message || "로그인 실패" };
