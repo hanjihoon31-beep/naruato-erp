@@ -1,0 +1,129 @@
+/* src/pages/WarehouseReturn.css */
+
+.return-container {
+  padding: 40px;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+.return-container h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 2rem;
+}
+
+.return-form {
+  max-width: 600px;
+  margin: 0 auto 40px auto;
+  background: #fff;
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.return-form label {
+  display: block;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.return-form input,
+.return-form textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+.return-form button {
+  margin-top: 20px;
+  padding: 10px 15px;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.return-form button:hover {
+  background-color: #1d4ed8;
+}
+
+.preview-img {
+  width: 100px;
+  height: 100px;
+  margin-top: 10px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.return-list {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.return-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: #fff;
+  margin-bottom: 15px;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.return-item img {
+  width: 70px;
+  height: 70px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.return-info {
+  flex-grow: 1;
+  text-align: left;
+}
+
+.status-approved {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.status-pending {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.return-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.approve-btn {
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.delete-btn {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.approve-btn:hover {
+  background: #15803d;
+}
+
+.delete-btn:hover {
+  background: #b91c1c;
+}

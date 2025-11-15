@@ -1,0 +1,35 @@
+/* src/pages/Erphan.css */
+.erphan-container {
+  padding: 30px;
+  background-color: #fff;
+  min-height: 100vh;
+  font-family: "Pretendard", sans-serif;
+}
+
+.erphan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logout-btn {
+  background-color: #f0f0f0;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.logout-btn:hover {
+  background-color: #ddd;
+}

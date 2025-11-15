@@ -1,0 +1,91 @@
+.warehouse-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 40px;
+  background-color: #f8fafc;
+  min-height: 100vh;
+}
+
+h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.warehouse-form {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.warehouse-form input,
+.warehouse-form textarea {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.submit-btn {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.submit-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.go-list-btn {
+  background-color: #f3f4f6;
+  color: #111827;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.go-list-btn:hover {
+  background-color: #e5e7eb;
+}
+
+.history-section {
+  margin-top: 40px;
+  width: 600px;
+  text-align: left;
+}
+
+.history-section h3 {
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+}
+
+.history-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.history-section li {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+}
