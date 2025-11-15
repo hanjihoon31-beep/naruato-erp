@@ -16,10 +16,21 @@ const ROLE_ROUTES = {
 };
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState("");
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // ✅ 초기 상태를 localStorage에서 직접 읽어옴
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem("erp_user");
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [token, setToken] = useState(() => localStorage.getItem("erp_token") || "");
+  const [loading, setLoading] = useState(true);
+
   const axiosRef = useRef(
     axios.create({
       baseURL: API_BASE,
@@ -92,6 +103,7 @@ export function AuthProvider({ children }) {
         const parsedUser = JSON.parse(savedUser);
         setToken(savedToken);
         setUser(enrichUser(parsedUser));
+        setLoading(false); // ✅ 로딩 완료
         return;
       } catch (err) {
         console.warn("저장된 사용자 정보를 불러오지 못했습니다. 재로그인 필요:", err);
