@@ -46,7 +46,15 @@ export default function AppRouter() {
           element={withPermission(<InventoryPage />, FEATURE_PERMISSIONS.INVENTORY_BASIC)}
         />
         <Route
+          path="inventory"
+          element={withPermission(<InventoryPage />, FEATURE_PERMISSIONS.INVENTORY_BASIC)}
+        />
+        <Route
           path="daily-inventory-template"
+          element={withPermission(<TemplatePage />, FEATURE_PERMISSIONS.INVENTORY_BASIC)}
+        />
+        <Route
+          path="template"
           element={withPermission(<TemplatePage />, FEATURE_PERMISSIONS.INVENTORY_BASIC)}
         />
         <Route path="*" element={<Navigate to="open-start" replace />} />
