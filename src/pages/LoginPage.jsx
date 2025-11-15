@@ -5,8 +5,20 @@ import naruatoLogo from "../assets/naruato-logo.jpg";
 import RegisterModal from "./RegisterModal";
 import FindPasswordModal from "./FindPasswordModal";
 
+console.log("=".repeat(80));
+console.log("📄 LoginPage.jsx 파일 로드됨!");
+console.log("=".repeat(80));
+
 const LoginPage = () => {
+  console.log("=".repeat(80));
+  console.log("📄 LoginPage 컴포넌트 렌더링!");
+  console.log("=".repeat(80));
+
   const { login, user, getLandingPath } = useAuth();
+  console.log("useAuth에서 받은 값:");
+  console.log("  login 함수:", login ? "✅ 있음" : "❌ 없음");
+  console.log("  user:", user ? `✅ ${user.name}` : "❌ 없음");
+  console.log("  getLandingPath:", getLandingPath ? "✅ 있음" : "❌ 없음");
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ employeeId: "", password: "" });
   const [message, setMessage] = useState("");
@@ -29,18 +41,40 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("=".repeat(80));
+    console.log("=".repeat(80));
+    console.log("🟢 LoginPage: 로그인 폼 제출됨!");
+    console.log("=".repeat(80));
+
     setMessage("");
     setLoading(true);
 
     if (!formData.employeeId || !formData.password) {
+      console.log("❌ LoginPage: 사번 또는 비밀번호 미입력");
       setMessage("사번과 비밀번호를 모두 입력해주세요.");
       setLoading(false);
       return;
     }
 
+    console.log("📞 LoginPage: login() 함수 호출 시작");
+    console.log("사번:", formData.employeeId);
+    console.log("=".repeat(80));
+
     const result = await login(formData.employeeId, formData.password);
-    if (!result?.success) setMessage(result?.message || "❌ 로그인 실패");
+
+    console.log("=".repeat(80));
+    console.log("📨 LoginPage: login() 함수 응답 받음");
+    console.log("응답 결과:", result);
+    console.log("=".repeat(80));
+
+    if (!result?.success) {
+      console.log("❌ LoginPage: 로그인 실패 -", result?.message);
+      setMessage(result?.message || "❌ 로그인 실패");
+    } else {
+      console.log("✅ LoginPage: 로그인 성공!");
+    }
     setLoading(false);
+    console.log("=".repeat(80));
   };
 
   const openRegister = () => setShowRegister(true);
