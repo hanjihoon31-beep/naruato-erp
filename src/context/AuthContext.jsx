@@ -20,8 +20,9 @@ export function AuthProvider({ children }) {
 
   // ✅ 초기 상태를 localStorage에서 직접 읽어옴
   const [token, setToken] = useState(() => {
+    console.log("📌 AuthContext 초기화 - localStorage 확인 중...");
     const savedToken = localStorage.getItem("erp_token");
-    console.log("🔐 초기 토큰 로드:", savedToken ? "있음" : "없음");
+    console.log("🔐 초기 토큰:", savedToken || "(없음)");
     return savedToken || "";
   });
 
@@ -29,9 +30,10 @@ export function AuthProvider({ children }) {
     try {
       const savedUser = localStorage.getItem("erp_user");
       const parsed = savedUser ? JSON.parse(savedUser) : null;
-      console.log("👤 초기 유저 로드:", parsed ? parsed.name : "없음");
+      console.log("👤 초기 유저:", parsed ? parsed.name : "(없음)");
       return parsed;
     } catch {
+      console.error("❌ 유저 정보 파싱 실패");
       return null;
     }
   });
@@ -58,15 +60,16 @@ export function AuthProvider({ children }) {
   // ✅ axios interceptor: 요청마다 최신 token 사용
   useEffect(() => {
     const requestInterceptor = authAxios.interceptors.request.use((config) => {
-      const currentToken = localStorage.getItem("erp_token"); // ✅ 항상 최신 토큰 사용
+      const currentToken = localStorage.getItem("erp_token");
       console.log("📡 API 요청:", config.method?.toUpperCase(), config.url);
+
       if (currentToken) {
         config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${currentToken}`;
-        console.log("🔑 토큰 헤더 추가:", currentToken.substring(0, 20) + "...");
+        console.log("✅ 토큰 있음 - 헤더 추가");
       } else {
-        console.warn("⚠️ 토큰이 없습니다! localStorage:", Object.keys(localStorage));
-        console.warn("⚠️ 현재 URL:", window.location.href);
+        console.warn("⚠️⚠️⚠️ 토큰 없음!");
+        console.warn("localStorage 키들:", Object.keys(localStorage));
       }
       return config;
     });
@@ -111,7 +114,9 @@ export function AuthProvider({ children }) {
   // ✅ 초기 로딩 완료 처리
   useEffect(() => {
     setLoading(false);
-    console.log("✅ AuthContext 초기화 완료 - 토큰:", token ? "있음" : "없음", "/ 유저:", user ? user.name : "없음");
+    console.log("✅✅ AuthContext 준비 완료!");
+    console.log("현재 토큰 상태:", token ? "있음" : "없음");
+    console.log("현재 유저 상태:", user ? user.name : "없음");
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hydrateProfile = useCallback(async () => {
@@ -149,15 +154,20 @@ export function AuthProvider({ children }) {
 
   /* ✅ 로그인 */
   const login = useCallback(async (employeeId, password) => {
+    console.log("📌 로그인 시작");
+    console.log("📌 사번:", employeeId);
+
     try {
-      const { data } = await authAxios.post(`/auth/login`, {
+      console.log("📌 서버에 로그인 요청 전송 중...");
+      const { data } = await authAxios.post("/auth/login", {
         employeeId,
         password,
       });
 
-      console.log("📥 로그인 응답 전체:", JSON.stringify(data, null, 2));
-      console.log("🔑 받은 토큰:", data.token ? data.token.substring(0, 30) + "..." : "❌ 토큰 없음!");
-      console.log("👤 받은 유저:", data.user ? data.user.name : "❌ 유저 없음!");
+      console.log("🔐 로그인 응답 전체:", data);
+      console.log("🔑 받은 토큰:", data.token);
+      console.log("🧑 사용자:", data.user);
+      console.log("✅ success 값:", data.success);
 
       if (data.success) {
         // ✅ 토큰 검증
@@ -166,27 +176,34 @@ export function AuthProvider({ children }) {
           return { success: false, message: "토큰을 받지 못했습니다. 관리자에게 문의하세요." };
         }
 
-        // ✅ 토큰 저장
+        // ✅ localStorage 저장
+        console.log("📦 localStorage 저장 시작");
         localStorage.setItem("erp_token", data.token);
-        console.log("💾 localStorage에 토큰 저장 완료");
+        localStorage.setItem("erp_user", JSON.stringify(data.user));
+        console.log("💾 localStorage 저장 완료");
 
-        // ✅ 즉시 확인
-        const savedToken = localStorage.getItem("erp_token");
-        console.log("🔍 저장 직후 확인:", savedToken ? savedToken.substring(0, 30) + "..." : "❌ 저장 실패!");
+        // ✅ 저장 확인
+        console.log("📌 저장 직후 토큰:", localStorage.getItem("erp_token"));
+        console.log("📌 저장 직후 유저:", localStorage.getItem("erp_user"));
 
+        // ✅ State 업데이트
+        console.log("📌 React State 업데이트 시작");
         const enriched = enrichUser(data.user);
-        localStorage.setItem("erp_user", JSON.stringify(enriched));
-        console.log("💾 localStorage에 유저 저장 완료");
-
         setToken(data.token);
         setUser(enriched);
+        console.log("📌 React State 업데이트 완료");
 
-        console.log("✅ 로그인 성공 - State 업데이트 완료");
+        console.log("✅✅✅ 로그인 전체 프로세스 성공!");
         return { success: true };
       }
+
+      console.log("❌ 로그인 실패 - success: false");
       return { success: false, message: data?.message || "로그인 실패" };
     } catch (err) {
-      console.error("❌ 로그인 오류:", err?.response?.data || err);
+      console.error("❌❌❌ 로그인 오류 발생!");
+      console.error("에러 응답:", err?.response?.data);
+      console.error("에러 상태:", err?.response?.status);
+      console.error("전체 에러:", err);
       return {
         success: false,
         message:
