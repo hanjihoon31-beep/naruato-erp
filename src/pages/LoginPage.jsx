@@ -5,7 +5,10 @@ import naruatoLogo from "../assets/naruato-logo.jpg";
 import RegisterModal from "./RegisterModal";
 import FindPasswordModal from "./FindPasswordModal";
 
+console.log("📄 LoginPage.jsx 파일 로드됨!");
+
 const LoginPage = () => {
+  console.log("📄 LoginPage 컴포넌트 렌더링!");
   const { login, user, getLandingPath } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ employeeId: "", password: "" });
@@ -29,6 +32,7 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("🟢 LoginPage: 로그인 폼 제출됨!");
     setMessage("");
     setLoading(true);
 
@@ -38,7 +42,12 @@ const LoginPage = () => {
       return;
     }
 
+    console.log("📞 LoginPage: login() 함수 호출 시작");
     const result = await login(formData.employeeId, formData.password);
+    console.log("📨 LoginPage: login() 함수 응답 받음", result);
+    if (result?.success) {
+      console.log("✅ LoginPage: 로그인 성공!");
+    }
     if (!result?.success) setMessage(result?.message || "❌ 로그인 실패");
     setLoading(false);
   };

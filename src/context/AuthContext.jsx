@@ -5,6 +5,11 @@ import { API_BASE } from "../utils/env.js";
 import { normalizeMenuPermissions } from "../utils/permissions.js";
 import { AuthContext } from "./AuthContextBase.js";
 
+console.log("🚀 AuthContext.jsx 파일 로드됨!");
+
+let hasLoggedAuthProviderMount = false;
+let hasLoggedBootstrapRead = false;
+
 // ✅ Vite 환경 변수 기반 (개발/배포 자동 분리)
 // 개발:  /api  → Vite proxy → http://localhost:3001/api
 // 배포:  /api  → Nginx proxy → 백엔드 서버로 전달
@@ -16,6 +21,10 @@ const ROLE_ROUTES = {
 };
 
 export function AuthProvider({ children }) {
+  if (!hasLoggedAuthProviderMount) {
+    console.log("🎯 AuthProvider 컴포넌트 렌더링 시작!");
+    hasLoggedAuthProviderMount = true;
+  }
   const [user, setUser] = useState(null);
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(true);
@@ -30,6 +39,7 @@ export function AuthProvider({ children }) {
   const authAxios = axiosRef.current;
 
   const logout = useCallback(() => {
+    console.warn("🚪 로그아웃 실행 → localStorage 초기화");
     localStorage.removeItem("erp_token");
     localStorage.removeItem("erp_user");
     setToken("");
@@ -39,6 +49,12 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const requestInterceptor = authAxios.interceptors.request.use((config) => {
+      console.log("📡 API 요청 인터셉터 실행", config?.url || "");
+      if (token) {
+        console.log("✅ localStorage에 토큰 있음!");
+      } else {
+        console.warn("⚠️⚠️⚠️ 토큰 없음!");
+      }
       if (token) {
         config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${token}`;
@@ -84,8 +100,19 @@ export function AuthProvider({ children }) {
   }, [resolveAdminPermissions]);
 
   useEffect(() => {
+    if (!hasLoggedBootstrapRead) {
+      console.log("📌 1단계: localStorage에서 토큰 읽기");
+    }
     const savedToken = localStorage.getItem("erp_token");
+    if (!hasLoggedBootstrapRead) {
+      console.log(savedToken ? "   → 토큰 발견" : "   → 토큰 없음");
+      console.log("📌 2단계: localStorage에서 유저 정보 읽기");
+    }
     const savedUser = localStorage.getItem("erp_user");
+    if (!hasLoggedBootstrapRead) {
+      console.log(savedUser ? "   → 유저 정보 발견" : "   → 유저 정보 없음");
+      hasLoggedBootstrapRead = true;
+    }
 
     if (savedToken && savedUser) {
       try {
@@ -137,18 +164,25 @@ export function AuthProvider({ children }) {
 
   /* ✅ 로그인 */
   const login = useCallback(async (employeeId, password) => {
+    console.log("🔥🔥🔥 로그인 함수 실행 시작!");
+    console.log("⏳ 서버에 POST /auth/login 요청 전송 중...");
     try {
       const { data } = await authAxios.post(`/auth/login`, {
         employeeId,
         password,
       });
+      console.log("📥 서버 응답 받음!");
 
       if (data.success) {
+        console.log("💾 3단계: localStorage에 저장 시작");
         localStorage.setItem("erp_token", data.token);
         const enriched = enrichUser(data.user);
         localStorage.setItem("erp_user", JSON.stringify(enriched));
+        console.log("🔍 4단계: 저장 확인");
         setToken(data.token);
         setUser(enriched);
+        console.log("⚛️ 5단계: React State 업데이트");
+        console.log("🎉🎉🎉 로그인 전체 프로세스 성공!");
         return { success: true };
       }
       return { success: false, message: data?.message || "로그인 실패" };

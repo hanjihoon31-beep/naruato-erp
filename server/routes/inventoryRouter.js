@@ -399,11 +399,15 @@ const handleTransfer = (transferType) => [
         await transfer.save();
       }
 
-      const populated = await transfer
-        .populate("product", "productName")
-        .populate("fromWarehouse", "warehouseName")
-        .populate("toWarehouse", "warehouseName")
-        .populate("requestedBy", "name");
+      const populated = await StockTransfer.findById(transfer._id) // 수정됨
+        .populate("product", "productName") // 수정됨
+        .populate("fromWarehouse", "warehouseName") // 수정됨
+        .populate("toWarehouse", "warehouseName") // 수정됨
+        .populate("requestedBy", "name"); // 수정됨
+
+      if (!populated) { // 추가됨
+        return res.status(404).json({ message: "입고 정보가 존재하지 않습니다." }); // 추가됨
+      } // 추가됨
 
       emitInventoryEvent(req, "transferUpdate", {
         action: "created",
