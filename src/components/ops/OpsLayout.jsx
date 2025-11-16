@@ -10,17 +10,28 @@ const OpsLayout = () => {
   const [branch, setBranch] = useState(null);
   const previousBranchRef = useRef(null);
 
+  console.log("🏢 [OpsLayout] 렌더링 시작");
+  console.log("   branchId:", branchId || "❌ 없음");
+  console.log("   branch:", branch ? `✅ ${branch.name}` : "❌ 없음");
+  console.log("   user:", user ? `✅ ${user.name}` : "❌ 없음");
+
   useEffect(() => {
+    console.log("🏢 [OpsLayout] localStorage에서 매장 preference 로드 시도");
     try {
       const saved = localStorage.getItem("ops_branch_preference");
+      console.log("   저장된 preference:", saved);
       if (saved) {
         const parsed = JSON.parse(saved);
+        console.log("   파싱된 데이터:", parsed);
         if (parsed?.id) {
+          console.log("   ✅ 매장 ID 복원:", parsed.id);
           setBranchId(parsed.id);
         }
+      } else {
+        console.log("   ❌ 저장된 preference 없음");
       }
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.error("   ❌ preference 로드 실패:", err);
     }
   }, []);
 

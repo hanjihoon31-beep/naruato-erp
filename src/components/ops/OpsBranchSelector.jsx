@@ -21,10 +21,16 @@ const OpsBranchSelector = ({ label = "매장 선택", value, onChange, onSelect 
   };
 
   useEffect(() => {
+    console.log("🏬 [OpsBranchSelector] 자동 선택 로직 실행");
+    console.log("   value:", value || "❌ 없음");
+    console.log("   branches.length:", branches.length);
     if (!value && branches.length) {
       const defaultBranch = branches[0];
+      console.log("   ✅ 첫 번째 매장 자동 선택:", defaultBranch);
       onChange?.(defaultBranch.id);
       onSelect?.(defaultBranch);
+    } else {
+      console.log("   ⏭️ 자동 선택 생략 (이미 선택됨 또는 매장 없음)");
     }
   }, [branches, value, onChange, onSelect]);
 
