@@ -4,6 +4,7 @@ import { useAuth } from "../context/useAuth";
 import { Button } from "../components/ui/button";
 import AddSimpleModal from "../components/modals/AddSimpleModal";
 import ProductSelect from "@/components/inventory/ProductSelect";
+import UnitSelector from "@/components/inventory/UnitSelector";
 import useWarehouses from "@/hooks/useWarehouses";
 import WarehouseManageModal from "@/components/modals/WarehouseManageModal";
 import ProductQuickAddModal from "@/components/modals/ProductQuickAddModal";
@@ -16,7 +17,9 @@ const WarehouseInbound = () => {
   const [warehouseId, setWarehouseId] = useState("");
   const [productId, setProductId] = useState("");
   const [productName, setProductName] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(null); // ✅ 제품 객체 저장
   const [quantity, setQuantity] = useState("");
+  const [unit, setUnit] = useState(""); // ✅ 단위 추가
   const [reason, setReason] = useState("");
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -66,6 +69,7 @@ const WarehouseInbound = () => {
       formData.append("productId", productId);
       formData.append("name", productName);
       formData.append("quantity", quantity);
+      formData.append("unit", unit || selectedProduct?.baseUnit || "EA"); // ✅ 단위 추가
       formData.append("reason", reason);
       formData.append("status", user.role === "user" ? "대기" : "승인됨");
       formData.append("userRole", user.role);
@@ -77,14 +81,20 @@ const WarehouseInbound = () => {
       });
 
       if (res.data.success) {
+        const conversionMsg = res.data.conversion
+          ? `\n변환: ${res.data.conversion.input} → ${res.data.conversion.base}`
+          : "";
+
         alert(
           user.role === "user"
-            ? "입고 요청이 등록되었습니다. (관리자 승인 대기)"
-            : "입고가 즉시 등록되었습니다."
+            ? `입고 요청이 등록되었습니다. (관리자 승인 대기)${conversionMsg}`
+            : `입고가 즉시 등록되었습니다.${conversionMsg}`
         );
         setProductId("");
         setProductName("");
+        setSelectedProduct(null);
         setQuantity("");
+        setUnit("");
         setReason("");
         setImage(null);
         setPreview(null);
@@ -153,38 +163,45 @@ const WarehouseInbound = () => {
               </p>
             </label>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-4">
               <ProductSelect
                 value={productId}
                 onSelect={(product) => {
                   setProductId(product?._id || "");
                   setProductName(product?.productName || "");
+                  setSelectedProduct(product); // ✅ 제품 객체 저장
+                  setUnit(product?.baseUnit || "EA"); // ✅ 기본 단위 설정
                 }}
                 label="품목명"
                 helper="새 품목을 등록한 뒤 갱신 버튼을 눌러 주세요."
                 autoSelectOnExactMatch
               />
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  수량
-                  <input
-                    type="number"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-darkborder bg-darkbg px-4 py-3 text-sm text-gray-100 placeholder-gray-400 focus:border-blue-400 focus:outline-none"
-                    placeholder="예: 15"
-                  />
-                </label>
-                {canManage && (
-                  <button
-                    type="button"
-                    onClick={() => setProductModalOpen(true)}
-                    className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-indigo-400 hover:text-indigo-600"
-                  >
-                    새 품목 등록
-                  </button>
-                )}
-              </div>
+
+              {/* ✅ UnitSelector 사용 */}
+              {productId && selectedProduct && (
+                <UnitSelector
+                  productId={productId}
+                  product={selectedProduct}
+                  value={quantity}
+                  selectedUnit={unit}
+                  onChange={(newValue, newUnit) => {
+                    setQuantity(newValue);
+                    setUnit(newUnit);
+                  }}
+                  label="수량 및 단위"
+                  showConversion={true}
+                />
+              )}
+
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => setProductModalOpen(true)}
+                  className="w-full rounded-2xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-indigo-400 hover:text-indigo-600"
+                >
+                  새 품목 등록
+                </button>
+              )}
             </div>
 
             <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400">

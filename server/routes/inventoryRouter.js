@@ -12,6 +12,7 @@ const Product = require("../models/Product.js");
 const Inventory = require("../models/Inventory.js");
 const StockTransfer = require("../models/StockTransfer.js");
 const ProductDisposal = require("../models/ProductDisposal.js");
+const { convertToBase, getUnitTree } = require("../utils/unitConverter.js");
 
 const router = express.Router();
 
@@ -360,7 +361,16 @@ const handleTransfer = (transferType) => [
   upload.single("file"),
   async (req, res) => {
     try {
-      const { warehouse: warehouseName, warehouseId, name, quantity, reason, productId } = req.body;
+      const {
+        warehouse: warehouseName,
+        warehouseId,
+        name,
+        quantity,
+        unit,  // ✅ 단위 추가
+        reason,
+        productId
+      } = req.body;
+
       if ((!warehouseId && !warehouseName) || (!name && !productId) || !quantity) {
         return res.status(400).json({ success: false, message: "필수 값이 누락되었습니다." });
       }
@@ -382,9 +392,34 @@ const handleTransfer = (transferType) => [
         return res.status(404).json({ success: false, message: "선택한 제품을 찾을 수 없습니다." });
       }
 
+      // ===== 단위 변환 로직 =====
+      const inputUnit = unit || productDoc.baseUnit || "EA";
+      let quantityInBase;
+
+      try {
+        quantityInBase = convertToBase(productDoc, inputUnit, Number(quantity));
+        console.log(`✅ 단위 변환: ${quantity} ${inputUnit} → ${quantityInBase} ${productDoc.baseUnit}`);
+      } catch (conversionError) {
+        console.error("단위 변환 실패:", conversionError);
+        return res.status(400).json({
+          success: false,
+          message: `단위 변환 오류: ${conversionError.message}`,
+          details: {
+            inputQuantity: quantity,
+            inputUnit: inputUnit,
+            productBaseUnit: productDoc.baseUnit,
+            availableUnits: productDoc.units?.map(u => u.unit) || []
+          }
+        });
+      }
+      // =========================
+
       const transfer = await StockTransfer.create({
         product: productDoc._id,
-        quantity: Number(quantity),
+        quantity: quantityInBase,  // ✅ baseUnit 기준 수량 저장
+        unit: productDoc.baseUnit,  // ✅ baseUnit 저장
+        inputQuantity: Number(quantity),  // 원본 입력 수량 기록 (선택)
+        inputUnit: inputUnit,              // 원본 입력 단위 기록 (선택)
         reason: `${transferType}|${reason || ""}`,
         requestedBy: req.user._id,
         status: req.user.role === "user" ? "대기" : "승인",
@@ -400,7 +435,7 @@ const handleTransfer = (transferType) => [
       }
 
       const populated = await transfer
-        .populate("product", "productName")
+        .populate("product", "productName baseUnit units")
         .populate("fromWarehouse", "warehouseName")
         .populate("toWarehouse", "warehouseName")
         .populate("requestedBy", "name");
@@ -411,7 +446,14 @@ const handleTransfer = (transferType) => [
         item: formatTransfer(populated),
       });
       await emitSnapshot(req);
-      res.json({ success: true, item: formatTransfer(populated) });
+      res.json({
+        success: true,
+        item: formatTransfer(populated),
+        conversion: {
+          input: `${quantity} ${inputUnit}`,
+          base: `${quantityInBase} ${productDoc.baseUnit}`
+        }
+      });
     } catch (error) {
       console.error(`${transferType} 등록 실패:`, error);
       res.status(500).json({ success: false, message: "요청 처리 중 오류가 발생했습니다." });
@@ -578,5 +620,167 @@ router.patch("/:id/reject", verifyToken, verifyAdmin, rejectHandler);
 router.put("/:id/reject", verifyToken, verifyAdmin, rejectHandler);
 
 router.delete("/:id", verifyToken, verifyAdmin, deleteHandler);
+
+/* ───────────── 단위 관리 API ───────────── */
+
+/**
+ * 제품의 단위 정보 조회
+ * GET /api/inventory/products/:id/units
+ */
+router.get("/products/:id/units", verifyToken, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: "제품을 찾을 수 없습니다." });
+    }
+
+    const unitTree = getUnitTree(product);
+    res.json({
+      success: true,
+      product: {
+        id: product._id,
+        name: product.productName,
+        baseUnit: product.baseUnit,
+        allowDecimal: product.allowDecimal
+      },
+      unitTree
+    });
+  } catch (error) {
+    console.error("단위 정보 조회 실패:", error);
+    res.status(500).json({ success: false, message: "단위 정보를 불러올 수 없습니다." });
+  }
+});
+
+/**
+ * 제품의 단위 설정 업데이트 (최고관리자 전용)
+ * PUT /api/inventory/products/:id/units
+ *
+ * Request Body:
+ * {
+ *   baseUnit: "EA",
+ *   units: [
+ *     { unit: "EA", parentUnit: null, ratio: 1 },
+ *     { unit: "BAG", parentUnit: "EA", ratio: 100 },
+ *     { unit: "BOX", parentUnit: "BAG", ratio: 30 }
+ *   ],
+ *   allowDecimal: false
+ * }
+ */
+router.put("/products/:id/units", verifyToken, async (req, res) => {
+  try {
+    // 권한 확인: 최고관리자만 가능
+    if (req.user.role !== "superadmin") {
+      return res.status(403).json({
+        success: false,
+        message: "단위 관리는 최고관리자만 수정할 수 있습니다."
+      });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: "제품을 찾을 수 없습니다." });
+    }
+
+    const { baseUnit, units, allowDecimal } = req.body;
+
+    if (!baseUnit) {
+      return res.status(400).json({ success: false, message: "baseUnit은 필수입니다." });
+    }
+
+    if (!Array.isArray(units) || units.length === 0) {
+      return res.status(400).json({ success: false, message: "units 배열은 비어있을 수 없습니다." });
+    }
+
+    // 유효성 검증
+    const { validateUnitDefinitions } = require("../utils/unitConverter.js");
+    const validation = validateUnitDefinitions(baseUnit, units);
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: "단위 설정이 유효하지 않습니다.",
+        errors: validation.errors
+      });
+    }
+
+    // 업데이트
+    product.baseUnit = baseUnit;
+    product.units = units;
+    if (allowDecimal !== undefined) {
+      product.allowDecimal = allowDecimal;
+    }
+    product.unitsLastModifiedBy = req.user._id;
+    product.unitsLastModifiedAt = new Date();
+
+    await product.save();
+
+    console.log(`✅ 제품 "${product.productName}" 단위 업데이트 완료 by ${req.user.name}`);
+
+    res.json({
+      success: true,
+      message: "단위 설정이 업데이트되었습니다.",
+      product: {
+        id: product._id,
+        name: product.productName,
+        baseUnit: product.baseUnit,
+        units: product.units,
+        allowDecimal: product.allowDecimal
+      }
+    });
+  } catch (error) {
+    console.error("단위 설정 업데이트 실패:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "단위 설정을 업데이트할 수 없습니다."
+    });
+  }
+});
+
+/**
+ * 단위 변환 미리보기 (테스트용)
+ * POST /api/inventory/products/:id/convert-preview
+ *
+ * Request Body:
+ * {
+ *   fromUnit: "BOX",
+ *   toUnit: "EA",
+ *   amount: 2
+ * }
+ */
+router.post("/products/:id/convert-preview", verifyToken, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: "제품을 찾을 수 없습니다." });
+    }
+
+    const { fromUnit, toUnit, amount } = req.body;
+
+    if (!fromUnit || !toUnit || amount == null) {
+      return res.status(400).json({
+        success: false,
+        message: "fromUnit, toUnit, amount가 필요합니다."
+      });
+    }
+
+    const { convertUnit } = require("../utils/unitConverter.js");
+    const convertedAmount = convertUnit(product, fromUnit, toUnit, Number(amount));
+
+    res.json({
+      success: true,
+      conversion: {
+        input: `${amount} ${fromUnit}`,
+        output: `${convertedAmount} ${toUnit}`,
+        product: product.productName,
+        baseUnit: product.baseUnit
+      }
+    });
+  } catch (error) {
+    console.error("단위 변환 미리보기 실패:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "단위 변환에 실패했습니다."
+    });
+  }
+});
 
 module.exports = router;
