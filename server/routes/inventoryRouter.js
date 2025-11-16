@@ -13,6 +13,7 @@ const Inventory = require("../models/Inventory.js");
 const StockTransfer = require("../models/StockTransfer.js");
 const ProductDisposal = require("../models/ProductDisposal.js");
 const { convertToBase, getUnitTree } = require("../utils/unitConverter.js");
+const { isNaturalInput, convertNaturalInput } = require("../utils/unitParser.js");
 
 const router = express.Router();
 
@@ -393,12 +394,24 @@ const handleTransfer = (transferType) => [
       }
 
       // ===== 단위 변환 로직 =====
-      const inputUnit = unit || productDoc.baseUnit || "EA";
       let quantityInBase;
+      let inputText = quantity; // 원본 입력 기록
+      let parsedInput = null; // 자연어 파싱 결과
 
       try {
-        quantityInBase = convertToBase(productDoc, inputUnit, Number(quantity));
-        console.log(`✅ 단위 변환: ${quantity} ${inputUnit} → ${quantityInBase} ${productDoc.baseUnit}`);
+        // ✅ 자연어 입력 감지 (예: "2박스 5봉지")
+        if (typeof quantity === 'string' && isNaturalInput(quantity)) {
+          console.log(`🗣️ 자연어 입력 감지: "${quantity}"`);
+          quantityInBase = convertNaturalInput(productDoc, quantity);
+          parsedInput = quantity;
+          console.log(`✅ 자연어 변환: "${quantity}" → ${quantityInBase} ${productDoc.baseUnit}`);
+        } else {
+          // ✅ 일반 단위 변환
+          const inputUnit = unit || productDoc.baseUnit || "EA";
+          quantityInBase = convertToBase(productDoc, inputUnit, Number(quantity));
+          inputText = `${quantity} ${inputUnit}`;
+          console.log(`✅ 단위 변환: ${quantity} ${inputUnit} → ${quantityInBase} ${productDoc.baseUnit}`);
+        }
       } catch (conversionError) {
         console.error("단위 변환 실패:", conversionError);
         return res.status(400).json({
@@ -406,7 +419,7 @@ const handleTransfer = (transferType) => [
           message: `단위 변환 오류: ${conversionError.message}`,
           details: {
             inputQuantity: quantity,
-            inputUnit: inputUnit,
+            inputUnit: unit,
             productBaseUnit: productDoc.baseUnit,
             availableUnits: productDoc.units?.map(u => u.unit) || []
           }

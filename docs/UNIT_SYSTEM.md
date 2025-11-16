@@ -483,3 +483,235 @@ if (req.user.role !== "superadmin") {
 ## 문의
 
 단위 시스템 관련 문의는 개발팀에 문의하세요.
+
+---
+
+## 자연어 입력 지원
+
+### 개요
+
+"2박스 5봉지 10개" 같은 자연어 입력을 자동으로 파싱하여 단위별 수량으로 변환합니다.
+
+### 지원되는 표현
+
+| 한글 | 영문 단위 |
+|------|----------|
+| 박스, 상자 | BOX |
+| 봉지, 봉 | BAG |
+| 개, 개입 | EA |
+| kg, 킬로 | KG |
+| g, 그램 | G |
+| 리터, l | L |
+| ml, 밀리리터 | ML |
+| 병 | BOTTLE |
+| 캔 | CAN |
+| 팩 | PACK |
+| 묶음 | BUNDLE |
+| 케이스 | CASE |
+
+### 사용 예시
+
+#### 입고 요청 시 자연어 입력
+
+```javascript
+// 롱스틱 입고
+const formData = new FormData();
+formData.append("productId", "...");
+formData.append("quantity", "2박스 5봉지 10개");  // ✅ 자연어 입력
+// unit 파라미터는 생략 가능
+
+// 자동 변환
+// 2박스 = 2 × 3000 EA = 6000 EA
+// 5봉지 = 5 × 100 EA = 500 EA
+// 10개 = 10 × 1 EA = 10 EA
+// 총합: 6510 EA
+```
+
+#### 응답
+
+```json
+{
+  "success": true,
+  "item": {
+    "quantity": 6510,
+    "unit": "EA"
+  },
+  "conversion": {
+    "input": "2박스 5봉지 10개",
+    "base": "6510 EA"
+  }
+}
+```
+
+### API 동작
+
+1. **입력 감지**: quantity가 문자열이고 단위 키워드 포함 시 자연어로 인식
+2. **파싱**: 각 단위별 수량 추출
+3. **변환**: 제품의 단위 시스템에 따라 baseUnit으로 변환
+4. **합산**: 모든 단위의 수량을 baseUnit으로 합산
+
+### 오류 처리
+
+```json
+// 잘못된 단위 사용
+{
+  "input": "2케이스 5박스",
+  "error": "\"2 CASE\" 변환 실패: 단위 'CASE'이(가) 제품 롱스틱의 단위 목록에 없습니다."
+}
+```
+
+### 프론트엔드 통합
+
+```jsx
+// 수량 입력 필드
+<input
+  type="text"
+  placeholder="예: 2박스 5봉지 또는 100"
+  onChange={(e) => setQuantity(e.target.value)}
+/>
+
+// 자연어와 일반 입력 모두 지원
+```
+
+---
+
+## UnitConfigModal - 제품 단위 설정 UI
+
+### 개요
+
+제품 생성/수정 시 단위 체계를 시각적으로 설정할 수 있는 모달 컴포넌트입니다.
+
+### 주요 기능
+
+1. **템플릿 선택**: 일반적인 단위 구조를 빠르게 적용
+   - 박스-봉지-개 (BOX → BAG → EA)
+   - 박스-킬로그램-그램 (BOX → KG → G)
+   - 박스-리터-밀리리터 (BOX → L → ML)
+   - 박스-병 (BOX → BOTTLE)
+
+2. **단위 정의**: 각 단위의 이름, 상위 단위, 비율, 설명 설정
+
+3. **실시간 미리보기**: 변환 경로 시각화
+
+4. **유효성 검증**: 순환 참조, 중복 단위, 누락된 baseUnit 자동 검출
+
+### 사용법
+
+```jsx
+import UnitConfigModal from "@/components/modals/UnitConfigModal";
+
+<UnitConfigModal
+  open={showModal}
+  onClose={() => setShowModal(false)}
+  onSave={(config) => {
+    // config: { baseUnit, units, allowDecimal }
+    console.log(config);
+  }}
+  initialConfig={existingConfig}
+/>
+```
+
+### 템플릿 예시
+
+**박스-봉지-개 (롱스틱)**
+```javascript
+{
+  baseUnit: "EA",
+  units: [
+    { unit: "EA", parentUnit: null, ratio: 1, description: "개별" },
+    { unit: "BAG", parentUnit: "EA", ratio: 100, description: "봉지 (100개)" },
+    { unit: "BOX", parentUnit: "BAG", ratio: 30, description: "박스 (30봉지)" }
+  ],
+  allowDecimal: false
+}
+```
+
+**박스-킬로그램-그램 (설탕)**
+```javascript
+{
+  baseUnit: "G",
+  units: [
+    { unit: "G", parentUnit: null, ratio: 1, description: "그램" },
+    { unit: "KG", parentUnit: "G", ratio: 1000, description: "킬로그램" },
+    { unit: "BOX", parentUnit: "KG", ratio: 5, description: "박스 (5kg)" }
+  ],
+  allowDecimal: true
+}
+```
+
+---
+
+## 완료된 기능 체크리스트
+
+- ✅ Product 스키마 다층 단위 시스템
+- ✅ 단위 변환 유틸리티 함수
+- ✅ 입출고 API 단위 자동 변환
+- ✅ 단위 관리 API (조회/수정/미리보기)
+- ✅ 권한 시스템 (superadmin 전용)
+- ✅ 프론트엔드 UnitSelector 컴포넌트
+- ✅ 실시간 변환 미리보기
+- ✅ 소수점 허용 여부 제어
+- ✅ 자연어 파서 ("2박스 5봉지")
+- ✅ UnitConfigModal (단위 설정 UI)
+- ✅ 템플릿 시스템
+- ✅ 마이그레이션 스크립트
+- ✅ 완전한 문서화
+
+---
+
+## 사용 시나리오
+
+### 시나리오 1: 새 제품 등록 (롱스틱)
+
+1. "새 품목 등록" 클릭
+2. 품목명: "롱스틱" 입력
+3. "단위 설정" 클릭
+4. 템플릿 "박스-봉지-개" 선택
+5. 비율 확인: BOX → BAG (30), BAG → EA (100)
+6. 소수점 비허용 체크
+7. 저장
+
+결과: 1 BOX = 3,000 EA로 자동 변환되는 제품 생성
+
+### 시나리오 2: 입고 (자연어 사용)
+
+1. 창고 선택
+2. 제품: "롱스틱" 선택
+3. 수량: "1박스 10봉지 50개" 입력 (자연어)
+4. 저장
+
+변환 과정:
+- 1박스 = 3,000 EA
+- 10봉지 = 1,000 EA
+- 50개 = 50 EA
+- 합계: 4,050 EA로 저장
+
+### 시나리오 3: 입고 (UI 사용)
+
+1. 창고 선택
+2. 제품: "설탕" 선택
+3. UnitSelector 표시
+4. 수량: 5 입력
+5. 단위: KG 선택
+6. 실시간 미리보기: "5 KG = 5,000 G"
+7. 저장
+
+결과: 5,000 G로 저장
+
+---
+
+## 업데이트 내역
+
+### v2.0 (최신)
+- ✅ 자연어 입력 파서 추가
+- ✅ UnitConfigModal 컴포넌트 추가
+- ✅ 제품 생성 시 단위 설정 UI 통합
+- ✅ 템플릿 시스템 추가
+- ✅ 문서 업데이트
+
+### v1.0
+- ✅ 기본 다층 단위 시스템
+- ✅ 단위 변환 API
+- ✅ UnitSelector 컴포넌트
+- ✅ 마이그레이션 스크립트
+
